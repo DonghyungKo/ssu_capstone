@@ -63,6 +63,7 @@ class SoongSiri(object):
         soup = BeautifulSoup(body, 'html.parser')
 
         movie_ls = [movie.text.strip() for movie in soup.find_all('td', {'class' : 'title'})][:10]
+        print(movie_ls)
         return ['이번 주의 영화 일위부터 십위까지 말씀드릴게요'] + movie_ls + ['마음에 드는 영화가 있으면 좋겠어요']
 
     def say_something_funny(self):
@@ -89,7 +90,7 @@ class SpeechToText(object):
         return
 
     def record_speech(self):
-        os.system('arecord --format=S16_LE --duration=3 --rate=16000 --file-type=wav stt.wav')
+        os.system('arecord --format=S16_LE --duration=2 --rate=16000 --file-type=wav stt.wav')
         return
 
     def read_api_key(self, path_to_file):
@@ -127,6 +128,7 @@ class SpeechToText(object):
         #print("[responseCode] " + str(response.status))
         #print("[responBody]")
         txt = json.loads(response.data.decode('utf-8'))['return_object']['recognized'].replace(' ','')
+        os.system('rm stt.wav')
         return txt
 
 
@@ -138,11 +140,15 @@ import os
 
 class TextToSpeech(object):
     def __init__(self):
-
         return
 
     def text_to_speech(self, text):
+        '''
         tts = gTTS(text=text, lang='ko')
         tts.save("speech.mp3")
         os.system('mplayer speech.mp3')
+        '''
+        os.system('gtts-cli --lang ko --nocheck --output tts.mp3 "%s"'%text)
+        os.system('mplayer tts.mp3')
+        os.system('rm tts.mp3')
         return
