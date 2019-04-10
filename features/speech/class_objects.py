@@ -5,42 +5,40 @@ import random
 import requests
 from bs4 import BeautifulSoup
 
+import sys, re
+sys.path.append('../youtube/')
+from youtube_audio import *
 
-# 1. 나 우울해 : 명언 골라주기
-# 2. 점심에 뭐 먹을까?
-# 3.
+# 노래봇 - 동형   : 2019.04.10 구현 완료
+# 번역 기능 - 동형
+# 점심에 뭐 먹을까? - 영훈
+# 날씨 어때? - 영훈
+#
 
 
 class SoongSiri(object):
     def __init__(self):
+
         self.keyword_dic = {
-            'say_hi' : ['안녕', '반갑', '반가', '방가', '하이', '헬로'],
-            'say_thank_you' : ['고마워', '땡큐', '잘했어', '감사'],
-            'say_love_you' : ['사랑해' ,'사랑'],
-            'ask_hungry' : ['밥먹었', '밥먹엇'],
-            'recommend_movie' : ['영화추', '재밌는영화', '볼만한영화', '재밋는영화','영화추천','영하추', '영화알'],
-            'say_something_funny' : ['웃긴이야기', '웃긴얘기', '재밌는얘기', '재밌는이야기'],
-            'ask_how_do_I_look' : ['나예','나잘생','나멋', '나좀예', '나좀잘', '나좀멋']
-
+            self.say_hi : ['안녕', '반갑', '반가', '방가', '하이', '헬로'],
+            self.say_thank_you : ['고마워', '땡큐', '잘했어', '감사'],
+            #self.say_love_you' : ['사랑해'],
+            self.ask_hungry : ['밥먹었', '밥먹엇'],
+            self.recommend_movie : ['영화추', '재밌는영화', '볼만한영화', '재밋는영화','영화추천','영하추', '영화알'],
+            self.say_something_funny : ['웃긴이야기', '웃긴얘기', '재밌는얘기', '재밌는이야기'],
+            self.ask_how_do_I_look : ['나예','나잘생','나멋', '나좀예', '나좀잘', '나좀멋'],
+            self.play_music : ['틀어', '들려', '재생해', '들어']
         }
 
-        self.function_dic = {
-            'say_hi' : self.say_hi,
-            'say_thank_you' : self.say_thank_you,
-            'say_love_you' : self.say_love_you,
-            'ask_hungry' : self.ask_hungry,
-            'recommend_movie' : self.recommend_movie,
-            'say_something_funny' : self.say_something_funny,
-            'ask_how_do_I_look' : self.ask_how_do_I_look,
-        }
-        return
 
 
     def recognize_speech(self, txt):
+        self.txt = txt
+
         # 의도 파악하여 적절한 함수 호출
-        for intend, keyword_ls in self.keyword_dic.items():
-            if any (word in txt for word in keyword_ls):
-                return self.function_dic[intend]()
+        for func, keyword_ls in self.keyword_dic.items():
+            if any (word in txt for word in keyword_ls if type(word)==str):
+                return func()
 
         return '잘 모르겠어요'
 
@@ -73,9 +71,17 @@ class SoongSiri(object):
     def ask_how_do_I_look(self):
         return random.choice(['일일구를 불러드릴까요?'])
 
+    def play_music(self):
+        # 가수 정보, 노래 제목 추출
+        for keyword in self.keyword_dic[self.play_music]:
+            if keyword in self.txt:
+                title = re.findall('.+(?=%s)'%keyword, self.txt).pop().strip()
+                break
 
-
-
+        # youtube_audio 객체 생성
+        self.youtube_audio = YoutubeAudio()
+        self.youtube_audio.play_audio(title)
+        return
 
 
 import urllib3
@@ -90,7 +96,7 @@ class SpeechToText(object):
         return
 
     def record_speech(self):
-        os.system('arecord --format=S16_LE --duration=2 --rate=16000 --file-type=wav stt.wav')
+        os.system('arecord --format=S16_LE --duration=3 --rate=16000 --file-type=wav stt.wav')
         return
 
     def read_api_key(self, path_to_file):
