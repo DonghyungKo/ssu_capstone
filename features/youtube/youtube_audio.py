@@ -7,19 +7,36 @@ import os
 import time
 
 from subprocess import Popen
+import json
 
 class YoutubeAudio(object):
     def __init__(self):
         # 최초 파일 제거
         os.system('rm music.wav')
+        with open('youtube_api.txt', 'r') as f:
+            self._api_key = f.readline().replace('\n','')
         return
 
-    def get_url(self, txt):
-        search_url = 'https://www.youtube.com/results?search_query=%s'%txt
-        body = requests.get(search_url).content
-        soup = BeautifulSoup(body, 'html.parser')
 
-        return 'https://www.youtube.com' + soup.find('a',{'class':'yt-uix-tile-link'}).get('href')
+    def get_url(self, txt):
+        # get url with api
+        url = 'https://www.googleapis.com/youtube/v3/search?'
+        params = {
+            'q' : '%s'%txt,
+            'part' : 'id',
+            'key' : '%s'%self._api_key,
+            'maxResults' : 1,
+            'type' : 'video',
+        }
+
+        for key, val in params.items():
+            url += '%s=%s&'%(key,val)
+
+        req = requests.get(url)
+        id = json.loads(req.content.decode('utf-8'))['items'].pop()['id']['videoId']
+        print('https://www.youtube.com/watch?v=%s'%id)
+        return 'https://www.youtube.com/watch?v=%s'%id
+
 
     def download_audio(self, url):
         ydl_opts = {
@@ -57,5 +74,5 @@ if __name__=='__main__':
     youtube_audio = YoutubeAudio()
     youtube_audio.play_audio('장범준 노래방에서')
 
-    time.sleep(5)
+    time.sleep(10)
     youtube_audio.stop_audio()
