@@ -6,8 +6,6 @@ import requests
 from bs4 import BeautifulSoup
 
 import sys, re
-sys.path.append('../youtube/')
-from youtube_audio import *
 
 # 노래봇 - 동형   : 2019.04.10 구현 완료
 # 번역 기능 - 동형
@@ -18,30 +16,38 @@ from youtube_audio import *
 
 class SoongSiri(object):
     def __init__(self):
+        # 클래스 호출
+        self.kakao = KakaoSpeech()
+        self.youtube_audio = YoutubeAudio()
 
         self.keyword_dic = {
             self.say_hi : ['안녕', '반갑', '반가', '방가', '하이', '헬로'],
             self.say_thank_you : ['고마워', '땡큐', '잘했어', '감사'],
-            #self.say_love_you' : ['사랑해'],
+            #self.say_love_you' : ['사랑해', ''],
             self.ask_hungry : ['밥먹었', '밥먹엇'],
-            self.recommend_movie : ['영화추', '재밌는영화', '볼만한영화', '재밋는영화','영화추천','영하추', '영화알'],
+            self.recommend_movie : ['영화추', '영화순', '재밌는영화', '볼만한영화', '재밋는영화','영화추천','영하추', '영화알'],
             self.say_something_funny : ['웃긴이야기', '웃긴얘기', '재밌는얘기', '재밌는이야기'],
             self.ask_how_do_I_look : ['나예','나잘생','나멋', '나좀예', '나좀잘', '나좀멋'],
-            self.play_music : ['틀어', '들려', '재생해', '들어']
+            self.play_music : ['틀어', '들려', '재생해', '들어'],
+            self.stop_music : ['노래꺼','음악꺼','악꺼줘', '소리꺼'],
+            self.volumn_up : [
+                '소리켜', '소리키','소리크','소리높', '음량켜','음량키','음량크', '음량높', '볼륨키', '볼륨크', '볼륨켜',
+                '소리더키','소리더켜','볼륨더키','볼륨더크','볼룸더켜'
+            ],
+            self.volumn_down : ['소리줄', '소리작','음량줄','음량작','볼륨작', '볼륨줄'],
         }
 
 
 
-    def recognize_speech(self, txt):
-        self.txt = txt
+    def recognize_speech(self, txt_ls):
+        self.txt_ls = txt_ls
 
         # 의도 파악하여 적절한 함수 호출
-        for func, keyword_ls in self.keyword_dic.items():
-            if any (word in txt for word in keyword_ls if type(word)==str):
-                return func()
-
+        for txt in txt_ls:
+            for func, keyword_ls in self.keyword_dic.items():
+                if any (word in txt for word in keyword_ls if type(word)==str):
+                    return func()
         return '잘 모르겠어요'
-
 
     def say_hi(self):
         return random.choice(['안녕하세요', '반갑습니다', '반가워요'])
@@ -71,17 +77,107 @@ class SoongSiri(object):
     def ask_how_do_I_look(self):
         return random.choice(['일일구를 불러드릴까요?'])
 
-    def play_music(self):
         # 가수 정보, 노래 제목 추출
+    def play_music(self):
         for keyword in self.keyword_dic[self.play_music]:
-            if keyword in self.txt:
-                title = re.findall('.+(?=%s)'%keyword, self.txt).pop().strip()
-                break
+            for txt in self.txt_ls:
+                if keyword in txt:
+                    title = re.findall('.+(?=%s)'%keyword, txt).pop().strip()
+                    self.kakao.text_to_speech('노래 들려드릴게요')
 
-        # youtube_audio 객체 생성
-        self.youtube_audio = YoutubeAudio()
-        self.youtube_audio.play_audio(title)
+                    # youtube_audio 객체 생성
+                    self.youtube_audio = YoutubeAudio()
+                    self.youtube_audio.play_audio(title)
+                    return
+
+    def stop_music(self):
+        os.system('pkill -9 mplayer')
         return
+
+    def volumn_up(self):
+        os.system('pactl set-sink-volume 0 +10%')
+
+    def volumn_down(self):
+        os.system('pactl set-sink-volume 0 -10%')
+
+
+
+#kakao STT API
+import os
+import subprocess
+import json
+import re
+
+class KakaoSpeech(object):
+    def __init__(self):
+        with open('kakao_api.txt', 'r') as f:
+            self.kakao_api = f.readline().replace('\n','')
+            return
+
+    def record_speech(self):
+        os.system('arecord --format=S16_LE --duration=3 --rate=16000 --file-type=wav stt.wav')
+        return
+
+    def set_volumn(self, volume):
+        os.system('amixer -c 0 set PCM %s'%volume)
+
+
+    def speech_to_text(self):
+        # volumn down when person speaks
+        self.set_volumn(200)
+
+        # record speech
+        self.record_speech()
+
+        # speech to text
+        sh = ' '.join([
+            'curl -v -X POST "https://kakaoi-newtone-openapi.kakao.com/v1/recognize"',
+            '-H "Transfer-Encoding: chunked"' ,
+            '-H "Content-Type: application/octet-stream"',
+            '-H "X-DSS-Service: DICTATION"',
+            '-H "Authorization:KakaoAK %s"'%self.kakao_api,
+            '--data-binary @stt.wav',
+        ])
+
+        proc = subprocess.Popen(sh, stdout=subprocess.PIPE, shell=True)
+        result = proc.stdout.read().decode('utf-8')
+
+        # 녹음한 파일 삭제
+        os.system('rm stt.wav')
+
+        # volumn back to normal state
+        self.set_volumn(255)
+
+        txt_ls = re.findall('(?<=value":")(.+)(?=")', result)
+        txt_ls.append(txt_ls.pop().split(',')[0].replace('"',''))
+        txt_ls = [txt.replace(' ','') for txt in txt_ls]
+        txt_ls.reverse()
+        return txt_ls
+
+    def text_to_speech(self, txt):
+        sh = [
+            'curl -v -X POST "https://kakaoi-newtone-openapi.kakao.com/v1/synthesize"',
+            '-H "Content-Type: application/xml"',
+            '-H "Authorization: %s"'%self.kakao_api,
+            "-d '<speak>",
+        ]
+
+        if type(txt) == str:
+            sh.append('<voice> %s </voice>'%txt)
+
+        elif type(txt) == list:
+            for t in txt:
+                sh.append('<voice> %s </voice>'%t)
+
+        sh.append("</speak>' > tts.mp3")
+        sh = ' '.join(sh)
+
+        # tts 요청
+        os.system(sh)
+        os.system('mplayer tts.mp3')
+        os.system('rm tts.mp3')
+
+    def translate(self, to='en'):
 
 
 import urllib3
@@ -89,6 +185,8 @@ import json
 import base64
 import os
 
+'''
+#Etri STT API
 class SpeechToText(object):
     def __init__(self):
         self._api_key = self.read_api_key('api_key.txt')
@@ -137,7 +235,7 @@ class SpeechToText(object):
         os.system('rm stt.wav')
         return txt
 
-
+'''
 
 
 
@@ -158,3 +256,83 @@ class TextToSpeech(object):
         os.system('mplayer tts.mp3')
         os.system('rm tts.mp3')
         return
+
+
+#from __future__ import unicode_literals
+import youtube_dl
+
+import requests
+from bs4 import BeautifulSoup
+import os
+import time
+
+from subprocess import Popen
+import json
+
+class YoutubeAudio(object):
+    def __init__(self):
+        # 최초 파일 제거
+        os.system('rm music.wav')
+        with open('youtube_api.txt', 'r') as f:
+            self._api_key = f.readline().replace('\n','')
+        return
+
+
+    def get_url(self, txt):
+        # get url with api
+        url = 'https://www.googleapis.com/youtube/v3/search?'
+        params = {
+            'q' : '%s'%txt,
+            'part' : 'id',
+            'key' : '%s'%self._api_key,
+            'maxResults' : 1,
+            'type' : 'video',
+        }
+
+        for key, val in params.items():
+            url += '%s=%s&'%(key,val)
+
+        req = requests.get(url)
+        id = json.loads(req.content.decode('utf-8'))['items'].pop()['id']['videoId']
+        print('https://www.youtube.com/watch?v=%s'%id)
+        return 'https://www.youtube.com/watch?v=%s'%id
+
+
+    def download_audio(self, url):
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl' : 'music.wav',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'wav',
+                'preferredquality': '192',
+            }],
+        }
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        return
+
+
+    def play_audio(self, txt):
+        # 음원 파일 링크 추출
+        url = self.get_url(txt)
+
+        # 음원 파일 다운로드
+        self.download_audio(url)
+
+        # subprocess에 mplayer 할당
+        self.proc = Popen(['mplayer', 'music.wav'])
+        self.music_pid = self.proc.pid
+
+
+    def stop_audio(self):
+        print(self.music_pid)
+        os.system('kill -9 %s'%self.music_pid)
+        os.system('rm music.wav')
+
+if __name__=='__main__':
+    youtube_audio = YoutubeAudio()
+    youtube_audio.play_audio('장범준 노래방에서')
+
+    time.sleep(10)
+    youtube_audio.stop_audio()
