@@ -13,12 +13,13 @@ class Engine():
 
 
         self.keyword_dic = {
-            self.say_hi : ['안녕', '반갑', '반가', '방가', '하이', '헬로'],
+            self.say_hi : ['안녕', '반갑', '반가', '방가', '하이', '헬로', '자비숭', '자비'],
             self.say_thank_you : ['고마워', '땡큐', '잘했어', '감사'],
+            self.called_other_name : ['시리야', '빅스비', '카카오', '누구'],
             #self.say_love_you' : ['사랑해', ''],
-            self.recommend_movie : ['영화추', '영화순', '재밌는영화', '볼만한영화', '재밋는영화','영화추천','영하추', '영화알'],
+            self.recommend_movie : ['영화추', '영화순', '재밌는영화', '볼만한영화', '재밋는영화','영화추천','영하추', '영하순',],
             self.play_video : ['동영상틀', '동영상들', '동영상재생', '동영상켜', '영상틀', '영상들', '영상재', '영상켜'],
-            self.pause_video : ['영상멈', '영상중', '영상재생중'],
+            self.pause_video : ['영상멈', '영상중', '영상재생중', '영상정'],
             self.stop_video : ['영상꺼', '영상끄', '영상닫','영상그만꺼'],
             self.play_audio : ['틀어', '들려', '재생해', '들어'],
             self.stop_audio : ['노래꺼','음악꺼','악꺼줘', '소리꺼', '노래그만꺼','노래이제꺼','음악그만꺼','음악이제꺼'],
@@ -44,6 +45,9 @@ class Engine():
 
     def say_thank_you(self):
         return random.choice(['도움이 되어서 기뻐요', '좋은 하루 되세요'])
+
+    def called_other_name(self):
+        return '제 이름을 모르시다니, 상처 받았어요'
 
     def say_love_you(self):
         return random.choice(['기계도 사랑을 할 수 있을까요'])
@@ -79,11 +83,11 @@ class Engine():
 
                     # youtube_audio 객체 생성
                     self.youtube_audio = YoutubeAudio()
-                    self.youtube_audio.play_audio(title)
+                    self.youtube_audio.play(title)
                     return
 
     def stop_audio(self):
-        self.youtube_audio.stop_audio()
+        self.youtube_audio.stop()
 
     def volumn_up(self):
         os.system('pactl set-sink-volume 0 +10%')
@@ -257,16 +261,16 @@ class YoutubeVideo(Youtube):
         self.player.set_media(Media)
         return self.player
 
-    def play_video(self, txt):
+    def play(self, txt):
         self.get_video(txt)
         self.player.play()
         return
 
-    def pause_video(self):
+    def pause(self):
         self.player.pause()
         return
 
-    def stop_video(self):
+    def stop(self):
         self.player.stop()
         return
 
@@ -275,7 +279,7 @@ class YoutubeAudio(Youtube):
         Youtube.__init__(self)
         os.system('rm audio.wav')
 
-    def download_audio(self, url):
+    def download(self, url):
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl' : 'audio.wav',
@@ -289,16 +293,16 @@ class YoutubeAudio(Youtube):
             ydl.download([url])
         return
 
-    def play_audio(self, txt):
+    def play(self, txt):
         # 음원 파일 링크 추출
         url = self.get_url(txt)
         # 음원 파일 다운로드
-        self.download_audio(url)
+        self.download(url)
         # subprocess에 mplayer 할당
         self.proc = Popen(['mplayer', 'audio.wav'])
         self.audio_pid = self.proc.pid
 
-    def stop_audio(self):
+    def stop(self):
         print(self.audio_pid)
         os.system('kill -9 %s'%self.audio_pid)
         os.system('rm audio.wav')

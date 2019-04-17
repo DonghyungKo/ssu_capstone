@@ -26,7 +26,7 @@ class Mirror(Engine):
     def run(self):
         # main GUI
         self.root = tkinter.Tk()
-        self.root.geometry('1000x750+100+100')
+        self.root.geometry('1300x1000+100+100')
         self.root.bind("<Return>", self.ask_mirror) # return key와 stt binding
 
         # Background Label
@@ -35,14 +35,15 @@ class Mirror(Engine):
         self.root.after(100, self.background_label.animate)
 
         # Answer Label
-        self.answer_label = Answer(self.root)
-        self.answer_label.pack()
+        #self.answer_label = Answer(self.root)
+        #self.answer_label.pack()
 
-        # video frame
+        # youtube video frame
         self.video_frame = VideoFrame(self.root)
+
+        # mainloop
         self.root.mainloop()
         return
-
 
     def ask_mirror(self, event):
         # 2초 이내에서는 중복실행 불가
@@ -57,34 +58,37 @@ class Mirror(Engine):
 
     # play youtube video1
     def play_video(self):
-        for txt in self.txt_ls:
-            for keyword in self.keyword_dic[self.play_video]:
-                if keyword in txt:
-                    title = re.findall('.+(?=%s)'%keyword, txt).pop().strip()
-                    self.kakao.text_to_speech('영상 틀어드릴게요')
+        # 현재 재생중인 영상이 없으면 새로운 영상 재생
+        if self.video_frame.on_air == False:
+            for txt in self.txt_ls:
+                for keyword in self.keyword_dic[self.play_video]:
+                    if keyword in txt:
+                        title = re.findall('.+(?=%s)'%keyword, txt).pop().strip()
+                        self.kakao.text_to_speech('영상 틀어드릴게요')
 
-                    self.background_label.pack_forget()         # background 화면 중지
-                    player = self.youtube_video.get_video(title) # video player 가져옴
-                    self.video_frame.pack(player)  # VideoFrame packing
-                    return
+                        self.background_label.pack_forget()         # background 화면 중지
+                        player = self.youtube_video.get_video(title) # YoutubeVideo에서 video player 가져옴
+                        self.video_frame.pack(player)       # VideoFrame packing
+        # 재생 중이던 영상이 있으면 이어서 재생en
+        elif self.video_frame.on_air == True:
+            self.video_frame.player.play()
 
     # pause youtube video
     def pause_video(self):
-        self.youtube_video.pause_video() # 영상 정지
+        self.video_frame.player.pause() # 영상 정지
         return
 
     def stop_video(self):
-        self.youtube_video.stop_video()  # 영상 정지
-        self.video_frame.pack_forget()   # 영상을 mirror 화면에서 제거
-        self.background_label.pack()     # background 다시 재생
+        self.video_frame.pack_forget()   # 영상 정지 및 영상을 mirror 화면에서 제거
+        self.background_label.pack()     # background를 다시 packing
         return
 
 
-
+# 기본 배경화면을 재생하는 Background
 class Background(Label):
     def __init__(self, root, path_to_file, delay=0.001):
         Label.__init__(self, root)
-        self.config(bg='black', width=1000, height=750)
+        self.config(bg='black', width=1300, height=1000)
         self.root = root
         self.path_to_file = path_to_file
         self.delay = delay
@@ -93,6 +97,7 @@ class Background(Label):
     def animate(self):
         try:
             self.gif = PhotoImage(file=self.path_to_file, format='gif -index %i'%(self.idx))  # Looping through the frames
+            self.gif = self.gif.zoom(2)
             self.configure(image=self.gif)
             self.idx += 1
         except tkinter.TclError:  # When we try a frame that doesn't exist, we know we have to start over from zero
@@ -100,7 +105,7 @@ class Background(Label):
         if True:
             self.root.after(int(self.delay*1000), self.animate)
 
-
+# 숭비스의 대답을 출력하는 Label
 class Answer(Label):
     def __init__(self, root):
         Label.__init__(self, root)
@@ -117,14 +122,17 @@ class Answer(Label):
 
 import platform
 
+# Youtube Video를 재생하는 Frame
 class VideoFrame(Frame):
     def __init__(self, root):
         Frame.__init__(self, root)
         self.root = root
         self.video_panel = Frame(self.root)
         self.canvas = Canvas(self.video_panel).pack(fill='both', expand=1)
+        self.on_air = False
 
     def pack(self, player):
+        self.on_air = True
         self.player = player
 
         # set the window id where to render VLC's video output
@@ -132,37 +140,15 @@ class VideoFrame(Frame):
             self.player.set_hwnd(self.get_handle())
         else:
             self.player.set_xwindow(self.get_handle()) # this line messes up windows
-
-        #self.player.video_set_deinterlace(str_to_bytes('yadif'))
         self.player.play()
         self.video_panel.pack(fill='both', expand=1)
         return
 
     def pack_forget(self):
+        self.on_air=False    # 현재 state를 False로 전환
+        self.player.stop()
         self.video_panel.pack_forget()
         return
 
     def get_handle(self):
         return self.video_panel.winfo_id()
-
-class ThreadedTasl(threading.Thread):
-    def __init__(self, q):
-        threading.Thread.__init__(self)
-        self.engine= Engine()
-        self.engine.q = q
-
-    def run(self):
-        self.engine.ask_me()
-        return
-
-    '''
-    def toggle_fullscreen(self, event=None):
-        self.full_screen = not self.full_screen  # Just toggling the boolean
-        self.tk.attributes("-fullscreen", self.full_screen)
-        return "break"
-
-    def end_fullscreen(self, event=None):
-        self.state = False
-        self.tk.attributes("-fullscreen", False)
-        return "break"
-    '''
