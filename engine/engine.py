@@ -3,6 +3,7 @@ import time
 import requests
 import random
 import re
+import queue
 
 class Engine():
     def __init__(self):
@@ -11,6 +12,9 @@ class Engine():
         self.youtube_video = YoutubeVideo()
         self.youtube_audio = YoutubeAudio()
 
+        # queue
+        self.q = queue.Queue()
+
 
         self.keyword_dic = {
             self.say_hi : ['안녕', '반갑', '반가', '방가', '하이', '헬로', '자비숭', '자비'],
@@ -18,7 +22,9 @@ class Engine():
             self.called_other_name : ['시리야', '빅스비', '카카오', '누구'],
             #self.say_love_you' : ['사랑해', ''],
             self.recommend_movie : ['영화추', '영화순', '재밌는영화', '볼만한영화', '재밋는영화','영화추천','영하추', '영하순',],
-            self.play_video : ['동영상틀', '동영상들', '동영상재생', '동영상켜', '영상틀', '영상들', '영상재', '영상켜'],
+            self.play_video : [
+                '동영상틀', '동영상들', '동영상재생', '동영상켜', '영상틀', '영상들', '영상재', '영상켜', '영상다시',
+            ],
             self.pause_video : ['영상멈', '영상중', '영상재생중', '영상정'],
             self.stop_video : ['영상꺼', '영상끄', '영상닫','영상그만꺼'],
             self.play_audio : ['틀어', '들려', '재생해', '들어'],
@@ -90,15 +96,16 @@ class Engine():
         self.youtube_audio.stop()
 
     def volumn_up(self):
-        os.system('pactl set-sink-volume 0 +10%')
+        os.system('pactl set-sink-volume 0 +15%')
 
     def volumn_down(self):
-        os.system('pactl set-sink-volume 0 -20%')
+        os.system('pactl set-sink-volume 0 -25%')
 
-    def ask_me(self, q):
+    def ask_me(self):
         speaker = self.kakao.speech_to_text()
         answer = self.recognize_speech(speaker)
-
+        # queue에 저장
+        self.q.put(answer)
         # str은 한 문장짜리 답변
         if type(answer) == str:
             self.kakao.text_to_speech(answer)
@@ -112,12 +119,6 @@ class Engine():
         else:
             return
 
-
-#kakao STT API
-import os
-import subprocess
-import json
-import re
 
 #kakao STT API
 import os
@@ -194,18 +195,6 @@ class KakaoSpeech(object):
         os.system('rm tts.mp3')
         return
 
-import youtube_dl
-
-import requests
-from bs4 import BeautifulSoup
-import os
-import time
-
-from subprocess import Popen
-import json
-
-import pafy
-import vlc
 
 import youtube_dl
 import requests
@@ -362,8 +351,6 @@ class SpeechToText(object):
         os.system('rm stt.wav')
         return txt
 
-'''
-
 
 
 from gtts import gTTS
@@ -374,12 +361,9 @@ class TextToSpeech(object):
         return
 
     def text_to_speech(self, text):
-        '''
-        tts = gTTS(text=text, lang='ko')
-        tts.save("speech.mp3")
-        os.system('mplayer speech.mp3')
-        '''
         os.system('gtts-cli --lang ko --nocheck --output tts.mp3 "%s"'%text)
         os.system('mplayer tts.mp3')
         os.system('rm tts.mp3')
         return
+
+'''
