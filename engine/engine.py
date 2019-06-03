@@ -1,3 +1,5 @@
+#-*- coding:utf-8 -*-
+
 import os
 import time
 import requests
@@ -7,7 +9,6 @@ import queue
 
 class Engine():
     def __init__(self):
-        # 클래스 호출
         self.kakao = KakaoSpeech()
         self.youtube_video = YoutubeVideo()
         self.youtube_audio = YoutubeAudio()
@@ -23,7 +24,7 @@ class Engine():
             #self.say_love_you' : ['사랑해', ''],
             self.recommend_movie : ['영화추', '영화순', '재밌는영화', '볼만한영화', '재밋는영화','영화추천','영하추', '영하순',],
             self.play_video : [
-                '동영상틀', '동영상들', '동영상재생', '동영상켜', '영상틀', '영상들', '영상재', '영상켜', '영상다시',
+                '동영상틀', '동영상들', '동영상재생', '동영상켜', '영상틀', '영상들', '영상재', '영상켜', '영상다시x',
             ],
             self.pause_video : ['영상멈', '영상중', '영상재생중', '영상정'],
             self.stop_video : ['영상꺼', '영상끄', '영상닫','영상그만꺼'],
