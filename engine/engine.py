@@ -34,6 +34,7 @@ class Engine():
                 '소리더키','소리더켜','볼륨더키','볼륨더크','볼룸더켜'
             ],
             self.volumn_down : ['소리줄', '소리작','음량줄','음량작','볼륨작', '볼륨줄'],
+            self.show_news : ['뉴스', '헤드라인']
         }
 
     def recognize_speech(self, txt_ls):
@@ -106,6 +107,7 @@ class Engine():
         answer = self.recognize_speech(speaker)
         # queue에 저장
         self.q.put(answer)
+
         # str은 한 문장짜리 답변
         if type(answer) == str:
             self.kakao.text_to_speech(answer)
@@ -118,6 +120,10 @@ class Engine():
         # 만약 미러가 작동해야 하는 경우
         else:
             return
+
+    def show_news(self):
+        'Mirror에서 구현'
+        return
 
 
 #kakao STT API
@@ -171,6 +177,13 @@ class KakaoSpeech(object):
         txt_ls.append(txt_ls.pop().split(',')[0].replace('"',''))
         txt_ls = [txt.replace(' ','') for txt in txt_ls]
         txt_ls.reverse()
+
+
+        #################################################################
+        # set stt result manually
+        #txt_ls = ['어벤저스 엔드게임 예고편 영상틀어줘']
+        #################################################################
+
         return txt_ls
 
     def text_to_speech(self, txt):
@@ -213,22 +226,54 @@ class Youtube(object):
             self._api_key = f.readline().replace('\n','')
         return
 
-    def get_url(self, txt):
+    def get_title(self, url):
+        req = requests.get(url)
+        soup = BeautifulSoup(req.content.decode('utf-8'), 'html.parser')
+        return soup.find('title').text
+
+    def get_playlist(self, txt, num_video=5):
+        '''
+        해당 txt로 검색했을 때, 재생 가능한 동영상 목록 list를 반환
+        {
+            title,, id, url
+        }
+        '''
+
+        playlist_ls = []
+
         # get url with api
         url = 'https://www.googleapis.com/youtube/v3/search?'
         params = {
             'q' : '%s'%txt,
             'part' : 'id',
             'key' : '%s'%self._api_key,
-            'maxResults' : 1,
+            'maxResults' : num_video,
             'type' : 'video',
         }
 
         for key, val in params.items():
             url += '%s=%s&'%(key,val)
 
-        req = requests.get(url)
-        id = json.loads(req.content.decode('utf-8'))['items'].pop()['id']['videoId']
+        req = requests.get(url).content.decode('utf-8')
+
+        for item in json.loads(req)['items']:
+            id = item['id']['videoId']
+            url = 'https://www.youtube.com/watch?v=%s'%id
+            title = self.get_title(url)
+
+            playlist_ls.append({
+                'title' : title,
+                'id' : id,
+                'url' : url,
+            })
+
+        print('================================================================================')
+        print([item['title'] for item in playlist_ls])
+        print('================================================================================')
+        return playlist_ls
+
+    def get_url(self, playlist_ls, idx=0):
+        id = playlist_ls[idx]['id']
         video_url = 'https://www.youtube.com/watch?v=%s'%id
         return video_url
 
@@ -239,8 +284,9 @@ class YoutubeVideo(Youtube):
 
     def get_video(self, txt):
         # 영상 파일 링크 추출
-        url = self.get_url(txt)
-        video = pafy.new(url)
+        playlist_ls = self.get_playlist(txt)
+        video_url = self.get_url(playlist_ls, idx=0) # idx는 나중에 이용자가 입력하도록 수정
+        video = pafy.new(video_url)
         best = video.getbest()
         play_url = best.url
         Instance = vlc.Instance()
@@ -300,6 +346,85 @@ import urllib3
 import json
 import base64
 import os
+import requests
+
+class WeatherForecast(object):
+    def __init__(self):
+        with open('data/skt_apikey.txt', 'r') as f:
+            self.appKey = f.readline().replace('\n','')
+        self.appKey = 'd23883b9-07c0-4f2b-a2b8-138fce5b1bf8'
+
+        self.city = '서울'
+        self.county = '강남구'
+        self.village = '삼성동'
+
+        # 현재 날씨(시간별)
+        self.url_hourly = "https://api2.sktelecom.com/weather/current/hourly"
+
+        self.headers = {
+            'Content-Type': 'application/json; charset=utf-8',
+            'appKey': self.appKey
+        }
+
+        self.params = {
+            "version": "1",
+            "city": self.city,
+            "county": self.county,
+            "village": self.village
+        }
+
+    #현재 날씨(시간별)
+    def hourly(self, weather):
+        # 기온 정보
+        # 오늘의 최고기온
+        #temperature_tmax = weather['temperature']['tmax']
+        # 1시간 현재기온
+        temperature_tc = '%.01f°C'%float(weather['temperature']['tc'])
+        print(temperature_tc)
+        # 오늘의 최저기온
+        #temperature_tmin = weather['temperature']['tmin']
+
+        # 하늘 상태 정보
+        # 하늘상태코드명
+        skycode_dic = {
+            'SKY_O01' : 'data/sunny.png',
+            'SKY_O02' : 'data/partly_sunny.png',
+            'SKY_O03' : 'data/cloud.png',
+            'SKY_O04' : 'data/rain.png',
+            'SKY_O05' : 'data/snow.png',
+            'SKY_O06' : 'data/snow.png',
+            'SKY_O07' : 'data/cloud.png',
+            'SKY_O08' : 'data/rain.png',
+            'SKY_O09' : 'data/snow.png',
+            'SKY_O10' : 'data/rain.png',
+            'SKY_O11' : 'data/storm.png',
+            'SKY_O12' : 'data/storm.png',
+            'SKY_O13' : 'data/storm.png',
+            'SKY_O14' : 'data/storm.png',
+        }
+        skycode = weather['sky']['code']
+        img_path = skycode_dic[skycode]
+
+        return temperature_tc, img_path
+
+    def requestCurrentWeather(self):
+        response = requests.get(self.url_hourly, params=self.params, headers=self.headers)
+
+        if response.status_code == 200:
+            response_body = response.json()
+
+            #날씨 정보
+            try:
+                weather_data = response_body['weather']['hourly'][0]
+                temp, sky = self.hourly(weather_data)
+
+                return temp, sky
+            except:
+                pass
+        else:
+            pass
+
+
 
 '''
 #Etri STT API
@@ -310,7 +435,7 @@ class SpeechToText(object):
         return
 
     def record_speech(self):
-        os.system('arecord --format=S16_LE --duration=3 --rate=16000 --file-type=wav stt.wav')
+        os.system('arecor   d --format=S16_LE --duration=3 --rate=16000 --file-type=wav stt.wav')
         return
 
     def read_api_key(self, path_to_file):
