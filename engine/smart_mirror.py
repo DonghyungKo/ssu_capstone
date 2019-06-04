@@ -35,9 +35,9 @@ class Mirror(Engine):
         self.bottom_frame.pack(side='bottom', fill='both', expand='True')
 
         # Background GIF -> middle frame
-        self.background_gif = BackgroundGIF(self.middle_frame, 'data/2.gif')
-        self.background_gif.place(x=850, y=200, anchor='center')
-        self.root.after(100, self.background_gif.animate)
+        #self.background_img = BackgroundImage(self.middle_frame)
+        #self.background_img.place(x=850, y=200, anchor='center')
+        #self.root.after(100, self.background_gif.animate)
 
         # Clock -> top_frame
         self.clock_frame = Clock(self.top_frame)
@@ -136,6 +136,11 @@ class Mirror(Engine):
 
 
 # 기본 배경화면을 재생하는 Background
+class BackgroundImage(Label):
+    def __init__(self, frame):
+        Label.__init__(self, frame, bg='black')
+
+
 class BackgroundGIF(Label):
     def __init__(self, frame, path_to_file, delay=1):
         Label.__init__(self, frame, bg='black')
@@ -145,11 +150,9 @@ class BackgroundGIF(Label):
         self.idx = 0
 
         # 배경 이미지
-
     def animate(self):
         try:
             self.gif = PhotoImage(file=self.path_to_file, format='gif -index %i'%(self.idx))  # Looping through the frames
-            self.gif = self.gif.zoom(1)
             self.configure(image=self.gif)
             self.idx += 1
         except tkinter.TclError:  # When we try a frame that doesn't exist, we know we have to start over from zero
