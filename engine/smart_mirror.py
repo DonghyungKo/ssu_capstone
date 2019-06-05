@@ -21,7 +21,11 @@ class Mirror(Engine):
     def run(self):
         # main GUI
         self.root = tkinter.Tk()
+<<<<<<< HEAD
         self.root.geometry('1300x800')
+=======
+        self.root.geometry('960x540')
+>>>>>>> origin/master
         self.root.bind("<Return>", self.ask_mirror) # return key와 stt binding
 
         # top Frame
