@@ -21,17 +21,17 @@ class Mirror(Engine):
     def run(self):
         # main GUI
         self.root = tkinter.Tk()
-        self.root.geometry('1600x1000')
+        self.root.geometry('1300x800')
         self.root.bind("<Return>", self.ask_mirror) # return key와 stt binding
 
         # top Frame
-        self.top_frame = Frame(self.root, bg='black', width=1600, height=150)
+        self.top_frame = Frame(self.root, bg='black', width=960, height=250)
         self.top_frame.pack(side='top', fill='both')
         # middle Frame
-        self.middle_frame = Frame(self.root, bg='black', width=1600, height=500)
+        self.middle_frame = Frame(self.root, bg='black', width=960, height=300)
         self.middle_frame.pack(fill='x')
         # bottom Frame
-        self.bottom_frame = Frame(self.root, bg='black', width=1600, height=350)
+        self.bottom_frame = Frame(self.root, bg='black', width=960, height=500)
         self.bottom_frame.pack(side='bottom', fill='both', expand='True')
 
         # Background GIF -> middle frame
@@ -49,19 +49,19 @@ class Mirror(Engine):
 
         # Headline -> top_frame
         self.headline_frame = HeadLine(self.bottom_frame)
-        #self.headline_frame.place(x=1700, y=10, anchor='e') # 헤드라인은 요청할 때만 띄움
+        self.headline_frame.pack(side='bottom', anchor='e') # 헤드라인은 요청할 때만 띄움
 
         # Answer -> bottom frame
-        #self.answer_label = Answer(self.bottom_frame)
-        #self.answer_label.pack(fill='both')
-        #self.root.after(100, self.show_answer)
+        self.answer_label = Answer(self.middle_frame)
+        self.answer_label.pack()
+        self.root.after(1000, self.show_answer)
 
         # youtube video frame
         self.video_frame = VideoFrame(self.root)
 
         # Icon
         self.youtube_icon = Icon(self.bottom_frame)
-        self.youtube_icon.pack(side='bottom', anchor='w', padx=30, pady=10)
+        self.youtube_icon.place(x=20, y=350, anchor='w')
 
 
         # mainloop
@@ -81,7 +81,7 @@ class Mirror(Engine):
         if self.q.qsize() > 0:
             self.answer_label.txt = self.q.get()
         if True:
-            self.root.after(100, self.show_answer)
+            self.root.after(1000, self.show_answer)
 
     def show_background(self):
         # top - middle - bottom 순으로 packing
@@ -127,7 +127,7 @@ class Mirror(Engine):
 
     def show_news(self):
         self.kakao.text_to_speech('오늘의 주요 언론 헤드라인 보여드릴게요')
-        self.headline_frame.place(x=1700, y=140, anchor='e') # 헤드라인은 요청할 때만 띄움
+        self.headline_frame.pack(side='bottom', anchor='e') # 헤드라인은 요청할 때만 띄움
         return
 
     def hide_news(self):
@@ -165,8 +165,8 @@ class Clock(Frame):
     def __init__(self, parent):
         Frame.__init__(self, parent, bg='black', width=500, height=300)
         self.parent = parent
-        self.small_font=tkinter.font.Font(family="helvetica", size=40)
-        self.large_font=tkinter.font.Font(family="helvetica", size=60)
+        self.small_font=tkinter.font.Font(family="helvetica", size=25)
+        self.large_font=tkinter.font.Font(family="helvetica", size=40)
 
         # date
         self.date_label = Label(self, bg='black', fg='white', font=self.small_font)
@@ -196,10 +196,10 @@ class Clock(Frame):
 
 class HeadLine(Frame):
     def __init__(self, parent):
-        Frame.__init__(self, parent, bg='black', width=1600, height=800)
+        Frame.__init__(self, parent, bg='black', width=500, height=400)
         self.parent = parent
         self.news_url = 'https://news.naver.com/'
-        self.small_font=tkinter.font.Font(size=40, font=('Times', 18))
+        self.small_font=tkinter.font.Font(size=40, font=('Times', 12))
 
         # headlines
         self.headline_ls = self.get_headline()
@@ -210,7 +210,7 @@ class HeadLine(Frame):
             label.pack(side='top', anchor='w', padx=0, pady=5)
         self.animate()
 
-    def get_headline(self):
+    def get_headline(self):     
         req = requests.get(self.news_url)
         soup = BeautifulSoup(req.content, 'html.parser')
         headline_ls = [i.text.strip().split('\n')[0] for i in soup.select('#today_main_news > div.hdline_news > ul > li')]
@@ -222,7 +222,7 @@ class HeadLine(Frame):
             for label, headline in zip(self.label_ls, self.headline_ls):
                 label.config(text = headline)
 
-            self.parent.after(10000, self.animate)
+            self.parent.after(1000, self.animate)
 
 
 # 숭비스의 대답을 출력하는 Label
@@ -232,14 +232,14 @@ class Answer(Label):
         self.frame = frame
         self.txt = '안녕하세요'
         self.config(text=self.txt, bg='black', fg='white', font='Times 30')
-        self.pack(side='top', anchor='n')
-        self.frame.after(100, self.animate)
+        self.pack(side='top', anchor='n', pady=10)
+        self.frame.after(1000, self.animate)
         return
 
     def animate(self):
         self.config(text=self.txt)
         if True:
-            self.frame.after(100, self.animate)
+            self.frame.after(1000, self.animate)
 
 
 import platform
@@ -279,13 +279,13 @@ from PIL import ImageTk, Image
 
 # Youtube Video를 재생하는 Frame
 class Icon(Frame):
-    def __init__(self, root, width=800, height=300):
+    def __init__(self, root, width=400, height=100):
         Frame.__init__(self, root, width=width, height=height, bg='black')
-        self.youtube_img = ImageTk.PhotoImage(Image.open('data/youtube.png').resize((150,150)))
-        self.youtube_label = Label(self, bg='black', width=150, height=150, image=self.youtube_img)
-        self.youtube_label.pack(side='left', anchor='w', padx=15)
+        self.youtube_img = ImageTk.PhotoImage(Image.open('data/youtube.png').resize((60,60)))
+        self.youtube_label = Label(self, bg='black', image=self.youtube_img)
+        self.youtube_label.pack(side='left', anchor='w', padx=5)
 
-        self.music_img = ImageTk.PhotoImage(Image.open('data/music.png').resize((120,120)))
+        self.music_img = ImageTk.PhotoImage(Image.open('data/music.png').resize((50,50)))
         self.music_label = Label(self, bg='black', image= self.music_img)
         self.music_label.pack(side='left', anchor='w')
 
@@ -298,13 +298,13 @@ class Weather(Frame):
         self.parent = parent
         self.weather = WeatherForecast()
         self.temperature, self.img_path = self.weather.requestCurrentWeather()
-        self.small_font=tkinter.font.Font(family="맑은 고딕", size=65)
+        self.small_font=tkinter.font.Font(family="맑은 고딕", size=40)
 
         # labels
         self.txt_label = Label(self, bg='black', fg='white', font=self.small_font)
         self.txt_label.config(text=self.temperature)
         self.txt_label.pack(side='left', anchor='w', padx=10, pady=5)
 
-        self.img = ImageTk.PhotoImage(Image.open(self.img_path).resize((120,120)))
+        self.img = ImageTk.PhotoImage(Image.open(self.img_path).resize((60,60)))
         self.img_label = Label(self, bg='black', image=self.img)
         self.img_label.pack(side='left', anchor='w', padx=15)

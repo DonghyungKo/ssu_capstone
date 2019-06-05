@@ -269,11 +269,13 @@ class Youtube(object):
             })
 
         print('================================================================================')
-        print([item['title'] for item in playlist_ls])
+        print([item for item in playlist_ls])
         print('================================================================================')
         return playlist_ls
 
     def get_url(self, playlist_ls, idx=0):
+        print(playlist_ls)
+        print(idx)
         id = playlist_ls[idx]['id']
         video_url = 'https://www.youtube.com/watch?v=%s'%id
         return video_url
@@ -330,8 +332,10 @@ class YoutubeAudio(Youtube):
         return
 
     def play(self, txt):
+        # Playlist 
+        playlist_ls = self.get_playlist(txt)
         # 음원 파일 링크 추출
-        url = self.get_url(txt)
+        url = self.get_url(playlist_ls)
         # 음원 파일 다운로드
         self.download(url)
         # subprocess에 mplayer 할당
